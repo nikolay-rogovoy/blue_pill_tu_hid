@@ -8,11 +8,19 @@ static volatile blue_hid_report_t current_hid_report = {
     .padding = 0,
 };
 
-void usb_hid_init(void)
+void usb_device_init(void)
 {
+    /* Инициализация USB контроллера STM32 */
     __HAL_RCC_USB_CLK_ENABLE();
     HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 6, 0);
     HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+
+    /* Инициализация TinyUSB stack */
+    tusb_rhport_init_t dev_init = {
+        .role = TUSB_ROLE_DEVICE,
+        .speed = TUSB_SPEED_FULL
+    };
+    tusb_init(0, &dev_init);
 }
 
 void usb_hid_set_buttons(uint32_t buttons)

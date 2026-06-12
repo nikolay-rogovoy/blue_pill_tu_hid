@@ -1,38 +1,15 @@
 #include "main.h"
 #include "led_task.h"
 #include "usb_task.h"
-#include "usb_task.h"
 #include "usb_report_task.h"
 #include "stm32f1xx_hal_tim.h"
 #include "usb_hid.h"
 
-#include "tusb.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
 static void MX_GPIO_Init(void);
 TIM_HandleTypeDef htim4;
-
-// void MX_TIM4_Init(void)
-// {
-//     htim4.Instance = TIM4;
-//     htim4.Init.Prescaler = 7200 - 1; /* 72 MHz / 7200 = 10 kHz */
-//     htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-//     htim4.Init.Period = 10 - 1; /* 10 kHz / 10 = 1 kHz */
-//     htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-//     HAL_TIM_Base_Init(&htim4);
-//     HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
-// }
-
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim_base)
-{
-    if (htim_base->Instance == TIM4)
-    {
-        __HAL_RCC_TIM4_CLK_ENABLE();
-        HAL_NVIC_SetPriority(TIM4_IRQn, 15, 0); /* Низший приоритет */
-        HAL_NVIC_EnableIRQ(TIM4_IRQn);
-    }
-}
 
 int main(void)
 {
@@ -41,29 +18,14 @@ int main(void)
     SystemClock_Config();
     MX_GPIO_Init();
 
-    usb_hid_init();
-
-    tusb_rhport_init_t dev_init = {
-        .role = TUSB_ROLE_DEVICE,
-        .speed = TUSB_SPEED_FULL};
-
-    tusb_init(0, &dev_init);
-
+    usb_device_init();
     usb_report_init();
 
     xTaskCreate(USBTask, "USB Task", 256, NULL, 2, NULL);
     xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, NULL);
     xTaskCreate(vLEDTask, "LED", 128, NULL, 1, NULL);
 
-    /* 5. Запуск планировщика FreeRTOS */
-    /* (Эта функция никогда не возвращает управление) */
     vTaskStartScheduler();
-
-    // while (1)
-    // {
-    //     HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
-    //     HAL_Delay(LED_TOGGLE_INTERVAL_MS);
-    // }
 }
 
 static void MX_GPIO_Init(void)

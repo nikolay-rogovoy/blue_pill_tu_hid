@@ -13,7 +13,7 @@ typedef struct __attribute__((packed))
     uint8_t padding;
 } blue_hid_report_t;
 
-void usb_hid_init(void);
+void usb_device_init(void);
 void usb_hid_set_buttons(uint32_t buttons);
 uint32_t usb_hid_get_buttons(void);
 
