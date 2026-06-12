@@ -19,7 +19,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "stm32f1xx_hal.h"
 #include "stm32f1xx_it.h"
 #include "tusb.h"
 #include "FreeRTOS.h" // Должен быть перед task.h

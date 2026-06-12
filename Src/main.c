@@ -1,18 +1,19 @@
 #include "main.h"
+#include "led_task.h"
+#include "usb_task.h"
+#include "usb_report_task.h"
 #include "stm32f1xx_hal_tim.h"
 #include "usb_hid.h"
 
+#include "tusb.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
-#include "tusb.h"
 
 static void MX_GPIO_Init(void);
 TIM_HandleTypeDef htim4;
 
-TaskHandle_t xHandleUSBTask = NULL;
 SemaphoreHandle_t xUSBReportSemaphore = NULL;
-TaskHandle_t xLEDTaskHandle = NULL;
 
 // void MX_TIM4_Init(void)
 // {
@@ -35,64 +36,6 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim_base)
     }
 }
 
-void vLEDTask(void *pvParameters)
-{
-    (void)pvParameters; // Подавляем warning о неиспользуемом параметре
-    uint32_t button_mask = 0x00000001u;
-
-    /* Бесконечный цикл задачи */
-    for (;;)
-    {
-        HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
-
-        if (xUSBReportSemaphore != NULL)
-        {
-            usb_hid_set_buttons(button_mask);
-            xSemaphoreGive(xUSBReportSemaphore);
-
-            button_mask <<= 1;
-            if (button_mask == 0u)
-            {
-                button_mask = 0x00000001u;
-            }
-        }
-
-        /* Задержка в миллисекундах (FreeRTOS) */
-        vTaskDelay(pdMS_TO_TICKS(LED_TOGGLE_INTERVAL_MS));
-    }
-}
-
-void USBReportTask(void *pvParameters)
-{
-    for (;;)
-    {
-        if (xUSBReportSemaphore != NULL && xSemaphoreTake(xUSBReportSemaphore, portMAX_DELAY) == pdTRUE)
-        {
-            blue_hid_report_t report = {
-                .buttons = usb_hid_get_buttons(),
-                .padding = 0,
-            };
-
-            if (tud_hid_ready())
-            {
-                tud_hid_report(0, &report, sizeof(report));
-            }
-        }
-    }
-}
-
-void USBTask(void *pvParameters)
-{
-    /* Сохраняем хендл текущей задачи в глобальную переменную */
-    xHandleUSBTask = xTaskGetCurrentTaskHandle();
-
-    for (;;)
-    {
-        tud_task();
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
-}
-
 int main(void)
 {
     HAL_Init();
@@ -110,9 +53,9 @@ int main(void)
 
     xUSBReportSemaphore = xSemaphoreCreateBinary();
 
-    xTaskCreate(USBTask, "USB Task", 256, NULL, 2, &xHandleUSBTask);
+    xTaskCreate(USBTask, "USB Task", 256, NULL, 2, NULL);
     xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, NULL);
-    xTaskCreate(vLEDTask, "LED", 128, NULL, 1, &xLEDTaskHandle);
+    xTaskCreate(vLEDTask, "LED", 128, NULL, 1, NULL);
 
     /* 5. Запуск планировщика FreeRTOS */
     /* (Эта функция никогда не возвращает управление) */
