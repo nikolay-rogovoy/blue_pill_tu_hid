@@ -1,6 +1,7 @@
 #include "main.h"
 #include "led_task.h"
 #include "usb_task.h"
+#include "usb_task.h"
 #include "usb_report_task.h"
 #include "stm32f1xx_hal_tim.h"
 #include "usb_hid.h"
@@ -8,12 +9,9 @@
 #include "tusb.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "semphr.h"
 
 static void MX_GPIO_Init(void);
 TIM_HandleTypeDef htim4;
-
-SemaphoreHandle_t xUSBReportSemaphore = NULL;
 
 // void MX_TIM4_Init(void)
 // {
@@ -51,7 +49,7 @@ int main(void)
 
     tusb_init(0, &dev_init);
 
-    xUSBReportSemaphore = xSemaphoreCreateBinary();
+    usb_report_init();
 
     xTaskCreate(USBTask, "USB Task", 256, NULL, 2, NULL);
     xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, NULL);

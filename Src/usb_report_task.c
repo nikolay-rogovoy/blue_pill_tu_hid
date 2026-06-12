@@ -2,6 +2,28 @@
 #include "usb_hid.h"
 #include "tusb.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+static SemaphoreHandle_t xUSBReportSemaphore = NULL;
+
+void usb_report_init(void)
+{
+    xUSBReportSemaphore = xSemaphoreCreateBinary();
+}
+
+void usb_report_notify(uint32_t buttons)
+{
+    if (xUSBReportSemaphore == NULL)
+    {
+        return;
+    }
+
+    usb_hid_set_buttons(buttons);
+    xSemaphoreGive(xUSBReportSemaphore);
+}
+
 void USBReportTask(void *pvParameters)
 {
     (void)pvParameters;
