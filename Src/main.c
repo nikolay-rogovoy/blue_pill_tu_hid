@@ -4,13 +4,14 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 #include "tusb.h"
 
 static void MX_GPIO_Init(void);
 TIM_HandleTypeDef htim4;
 
 TaskHandle_t xHandleUSBTask = NULL;
-TaskHandle_t xHandleUSBReportTask = NULL;
+SemaphoreHandle_t xUSBReportSemaphore = NULL;
 TaskHandle_t xLEDTaskHandle = NULL;
 
 // void MX_TIM4_Init(void)
@@ -44,9 +45,10 @@ void vLEDTask(void *pvParameters)
     {
         HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
 
-        if (xHandleUSBReportTask != NULL)
+        if (xUSBReportSemaphore != NULL)
         {
-            xTaskNotify(xHandleUSBReportTask, button_mask, eSetValueWithOverwrite);
+            usb_hid_set_buttons(button_mask);
+            xSemaphoreGive(xUSBReportSemaphore);
 
             button_mask <<= 1;
             if (button_mask == 0u)
@@ -62,25 +64,18 @@ void vLEDTask(void *pvParameters)
 
 void USBReportTask(void *pvParameters)
 {
-    uint32_t button_mask;
-
-    /* Сохраняем хендл текущей задачи в глобальную переменную */
-    xHandleUSBReportTask = xTaskGetCurrentTaskHandle();
-
     for (;;)
     {
-        if (xTaskNotifyWait(0, 0, &button_mask, portMAX_DELAY) == pdTRUE)
+        if (xUSBReportSemaphore != NULL && xSemaphoreTake(xUSBReportSemaphore, portMAX_DELAY) == pdTRUE)
         {
-            uint8_t report[5] = {0};
-            report[0] = (uint8_t)(button_mask & 0xFFu);
-            report[1] = (uint8_t)((button_mask >> 8) & 0xFFu);
-            report[2] = (uint8_t)((button_mask >> 16) & 0xFFu);
-            report[3] = (uint8_t)((button_mask >> 24) & 0xFFu);
-            report[4] = 0; // padding for 32-button report
+            blue_hid_report_t report = {
+                .buttons = usb_hid_get_buttons(),
+                .padding = 0,
+            };
 
             if (tud_hid_ready())
             {
-                tud_hid_report(0, report, sizeof(report));
+                tud_hid_report(0, &report, sizeof(report));
             }
         }
     }
@@ -105,10 +100,6 @@ int main(void)
     SystemClock_Config();
     MX_GPIO_Init();
 
-    __HAL_RCC_USB_CLK_ENABLE();
-    HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 6, 0);
-    HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
-
     usb_hid_init();
 
     tusb_rhport_init_t dev_init = {
@@ -117,8 +108,10 @@ int main(void)
 
     tusb_init(0, &dev_init);
 
+    xUSBReportSemaphore = xSemaphoreCreateBinary();
+
     xTaskCreate(USBTask, "USB Task", 256, NULL, 2, &xHandleUSBTask);
-    xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, &xHandleUSBReportTask);
+    xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, NULL);
     xTaskCreate(vLEDTask, "LED", 128, NULL, 1, &xLEDTaskHandle);
 
     /* 5. Запуск планировщика FreeRTOS */
