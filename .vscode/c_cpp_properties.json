@@ -1,0 +1,46 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F103C8T6",
+            "includePath": [
+                "${workspaceFolder}/Inc",
+                "${workspaceFolder}/Src",
+                "${workspaceFolder}/libs/tinyusb/src",
+                "${workspaceFolder}/libs/STM32CubeF1/Drivers/CMSIS/Core/Include",
+                "${workspaceFolder}/libs/STM32CubeF1/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+                "${workspaceFolder}/libs/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc",
+                "${workspaceFolder}/libs/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+                "${workspaceFolder}/libs/FreeRTOS/include",
+                "${workspaceFolder}/libs/FreeRTOS/portable/GCC/ARM_CM3"
+            ],
+            "defines": [
+                "STM32F103xB",
+                "USE_HAL_DRIVER",
+                "HSE_VALUE=8000000",
+                "HSI_VALUE=8000000",
+                "STM32F1"
+            ],
+            "compilerPath": "arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm",
+            "compilerArgs": [
+                "-mcpu=cortex-m3",
+                "-mthumb",
+                "-mfloat-abi=soft",
+                "-ffunction-sections",
+                "-fdata-sections"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${workspaceFolder}/libs/STM32CubeF1/Drivers/CMSIS/Core/Include",
+                    "${workspaceFolder}/libs/STM32CubeF1/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+                    "${workspaceFolder}/libs/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
