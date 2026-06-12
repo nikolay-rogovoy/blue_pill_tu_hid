@@ -20,6 +20,7 @@ void Error_Handler(void);
 void SystemClock_Config(void);
 void vLEDTask(void *pvParameters);
 void USBTask(void *pvParameters);
+void USBReportTask(void *pvParameters);
 
 #ifdef __cplusplus
 }

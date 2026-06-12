@@ -9,6 +9,10 @@
 static void MX_GPIO_Init(void);
 TIM_HandleTypeDef htim4;
 
+TaskHandle_t xHandleUSBTask = NULL;
+TaskHandle_t xHandleUSBReportTask = NULL;
+TaskHandle_t xLEDTaskHandle = NULL;
+
 // void MX_TIM4_Init(void)
 // {
 //     htim4.Instance = TIM4;
@@ -40,16 +44,9 @@ void vLEDTask(void *pvParameters)
     {
         HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
 
-        if (tud_hid_ready())
+        if (xHandleUSBReportTask != NULL)
         {
-            uint8_t report[5] = {0};
-            report[0] = (uint8_t)(button_mask & 0xFFu);
-            report[1] = (uint8_t)((button_mask >> 8) & 0xFFu);
-            report[2] = (uint8_t)((button_mask >> 16) & 0xFFu);
-            report[3] = (uint8_t)((button_mask >> 24) & 0xFFu);
-            report[4] = 0; // padding for 32-button report
-
-            tud_hid_report(0, report, sizeof(report));
+            xTaskNotify(xHandleUSBReportTask, button_mask, eSetValueWithOverwrite);
 
             button_mask <<= 1;
             if (button_mask == 0u)
@@ -63,8 +60,31 @@ void vLEDTask(void *pvParameters)
     }
 }
 
-TaskHandle_t xHandleUSBTask = NULL;
-TaskHandle_t xLEDTaskHandle = NULL;
+void USBReportTask(void *pvParameters)
+{
+    uint32_t button_mask;
+
+    /* Сохраняем хендл текущей задачи в глобальную переменную */
+    xHandleUSBReportTask = xTaskGetCurrentTaskHandle();
+
+    for (;;)
+    {
+        if (xTaskNotifyWait(0, 0, &button_mask, portMAX_DELAY) == pdTRUE)
+        {
+            uint8_t report[5] = {0};
+            report[0] = (uint8_t)(button_mask & 0xFFu);
+            report[1] = (uint8_t)((button_mask >> 8) & 0xFFu);
+            report[2] = (uint8_t)((button_mask >> 16) & 0xFFu);
+            report[3] = (uint8_t)((button_mask >> 24) & 0xFFu);
+            report[4] = 0; // padding for 32-button report
+
+            if (tud_hid_ready())
+            {
+                tud_hid_report(0, report, sizeof(report));
+            }
+        }
+    }
+}
 
 void USBTask(void *pvParameters)
 {
@@ -98,7 +118,7 @@ int main(void)
     tusb_init(0, &dev_init);
 
     xTaskCreate(USBTask, "USB Task", 256, NULL, 2, &xHandleUSBTask);
-
+    xTaskCreate(USBReportTask, "USB Report", 256, NULL, 2, &xHandleUSBReportTask);
     xTaskCreate(vLEDTask, "LED", 128, NULL, 1, &xLEDTaskHandle);
 
     /* 5. Запуск планировщика FreeRTOS */
